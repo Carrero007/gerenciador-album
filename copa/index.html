@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Álbum Copa 2026 — Gerenciador de Figurinhas</title>
+  <meta name="description" content="Gerenciador completo de figurinhas da Copa do Mundo 2026 Panini">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-spinner"></div>
+  <div class="loader-text">Carregando álbum...</div>
+</div>
+
+<!-- APP -->
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <span class="sidebar-logo-icon">⚽</span>
+        <div class="sidebar-logo-text">
+          Álbum Copa 2026
+          <small>PANINI · FIFA WORLD CUP™</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progresso global com anel -->
+    <div class="global-progress">
+      <div class="progress-ring-container">
+        <svg width="64" height="64" viewBox="0 0 120 120">
+          <circle class="progress-ring-track" cx="60" cy="60" r="54"/>
+          <circle id="progress-ring-fill" cx="60" cy="60" r="54"
+            stroke-dasharray="339.3" stroke-dashoffset="339.3"/>
+        </svg>
+        <div class="progress-ring-label" id="stat-pct">0%</div>
+      </div>
+      <div class="progress-stats">
+        <div class="prog-stat owned"><strong id="stat-owned">0</strong>Tenho</div>
+        <div class="prog-stat missing"><strong id="stat-missing">0</strong>Faltando</div>
+        <div class="prog-stat dup"><strong id="stat-dup">0</strong>Repetidas</div>
+        <div class="prog-stat"><strong id="stat-total">0</strong>Total</div>
+      </div>
+    </div>
+
+    <div class="sidebar-sections-title">Seções</div>
+    <div id="sidebar-sections"></div>
+  </aside>
+
+  <!-- MAIN -->
+  <main id="main">
+
+    <!-- HEADER -->
+    <header id="header">
+      <button id="menu-toggle" title="Menu">☰</button>
+
+      <div class="header-left">
+        <div id="section-title">Carregando...</div>
+        <div id="section-subtitle"></div>
+      </div>
+
+      <div class="header-center">
+        <span class="search-icon">🔍</span>
+        <input id="search-input" class="search-input" type="search"
+          placeholder="Buscar figurinha..." autocomplete="off">
+      </div>
+
+      <div class="header-right">
+        <!-- Entrada em massa -->
+        <button class="btn btn-yellow" onclick="App.openBulkModal()" title="Marcar várias de uma vez">
+          <span>📋</span><span>Em massa</span>
+        </button>
+
+        <!-- Exportar -->
+        <div style="position:relative" id="export-wrapper">
+          <button class="btn btn-ghost" onclick="toggleExportMenu()" title="Exportar">
+            <span>📤</span><span>Exportar</span>
+          </button>
+          <div id="export-menu" class="dropdown-menu" style="display:none">
+            <button class="dropdown-item" onclick="App.exportMissing(); toggleExportMenu()">
+              ❌ Lista de Faltando
+            </button>
+            <button class="dropdown-item" onclick="App.exportDuplicates(); toggleExportMenu()">
+              🔄 Lista de Repetidas
+            </button>
+            <button class="dropdown-item" onclick="App.exportJSON(); toggleExportMenu()">
+              💾 Backup JSON
+            </button>
+            <hr class="dropdown-divider">
+            <label class="dropdown-item" style="cursor:pointer">
+              📥 Importar JSON
+              <input type="file" id="import-file" accept=".json" style="display:none">
+            </label>
+          </div>
+        </div>
+
+        <!-- Configurações -->
+        <button class="btn btn-ghost btn-icon-only" onclick="document.getElementById('settings-modal').classList.add('open')" title="Configurações">⚙️</button>
+      </div>
+    </header>
+
+    <!-- TOOLBAR -->
+    <div id="toolbar">
+      <div class="filter-group">
+        <button class="filter-btn active" data-filter="all"       onclick="App.setFilter('all')">Todas</button>
+        <button class="filter-btn"        data-filter="owned"     onclick="App.setFilter('owned')">✅ Tenho</button>
+        <button class="filter-btn"        data-filter="missing"   onclick="App.setFilter('missing')">❌ Faltando</button>
+        <button class="filter-btn"        data-filter="duplicate" onclick="App.setFilter('duplicate')">🔄 Repetidas</button>
+      </div>
+
+      <div class="view-group">
+        <button class="view-btn active" data-view="grid" onclick="App.setView('grid')" title="Grade">⊞</button>
+        <button class="view-btn"        data-view="list" onclick="App.setView('list')" title="Lista">≡</button>
+      </div>
+
+      <div class="toolbar-spacer"></div>
+
+      <span id="filter-count">— figurinhas</span>
+    </div>
+
+    <!-- GRID -->
+    <div id="stickers-container">
+      <div id="stickers-grid" class="stickers-grid view-grid"></div>
+    </div>
+
+    <!-- STATS BAR -->
+    <div id="stats-bar">
+      <div class="stat-chip stat-owned">
+        <strong id="stat-owned-b">0</strong><span>no álbum</span>
+      </div>
+      <div class="stat-chip stat-missing">
+        <strong id="stat-missing-b">0</strong><span>faltando</span>
+      </div>
+      <div class="stat-chip stat-dup">
+        <strong id="stat-dup-b">0</strong><span>repetidas</span>
+      </div>
+      <div class="stat-chip stat-total">
+        <strong id="stat-total-b">0</strong><span>total</span>
+      </div>
+      <span id="db-source" class="badge-local">💾 Local</span>
+    </div>
+
+  </main>
+</div>
+
+<!-- ============================================================
+     MODAIS
+     ============================================================ -->
+
+<!-- MODAL: Detalhes da Figurinha -->
+<div id="sticker-modal" class="modal-overlay" data-sticker-id="">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Detalhes da Figurinha</span>
+      <button class="modal-close" onclick="App.closeModal('sticker-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-sticker-header">
+        <div class="modal-sticker-num">—</div>
+        <div class="modal-sticker-name">—</div>
+        <div class="modal-sticker-section">—</div>
+      </div>
+      <div class="modal-sticker-status">—</div>
+      <div class="modal-sticker-actions">
+        <button class="btn btn-turq" onclick="App.setStatus(document.getElementById('sticker-modal').dataset.stickerId,'owned',1); App.closeModal('sticker-modal')">
+          <span>✅</span><span>Tenho</span>
+        </button>
+        <button class="btn btn-yellow" onclick="App.openDupModal(document.getElementById('sticker-modal').dataset.stickerId); App.closeModal('sticker-modal')">
+          <span>🔄</span><span>Repetida</span>
+        </button>
+        <button class="btn btn-ghost" onclick="App.setStatus(document.getElementById('sticker-modal').dataset.stickerId,'missing',0); App.closeModal('sticker-modal')">
+          <span>❌</span><span>Faltando</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Repetida -->
+<div id="dup-modal" class="modal-overlay" data-sticker-id="">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-header">
+      <span class="modal-title">🔄 Figurinha Repetida</span>
+      <button class="modal-close" onclick="App.closeModal('dup-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.85rem; color:var(--text-2); margin-bottom:12px">
+        Figurinha: <strong id="dup-sticker-id" style="color:var(--text-1)">—</strong>
+      </p>
+      <div class="dup-control">
+        <label>Quantas tenho no total:</label>
+        <input type="number" id="dup-qty" min="2" max="99" value="2">
+      </div>
+      <p style="font-size:0.75rem; color:var(--text-3)">
+        Ex: se você tem 3 dessa figurinha, coloque 3 — o sistema vai contar 2 como repetidas.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="App.closeModal('dup-modal')">Cancelar</button>
+      <button class="btn btn-yellow" id="confirm-dup">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Entrada em Massa -->
+<div id="bulk-modal" class="modal-overlay">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <span class="modal-title">📋 Entrada em Massa</span>
+      <button class="modal-close" onclick="App.closeModal('bulk-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <textarea id="bulk-input" class="bulk-textarea"
+        placeholder="Cole os códigos das figurinhas, um por linha ou separados por vírgula:&#10;BRA-1&#10;BRA-2, BRA-3&#10;ARG-5"></textarea>
+      <p class="bulk-hint">
+        Cole os códigos das figurinhas (ex: BRA-1, ARG-5, FRA-10). Separe por quebra de linha ou vírgula.
+      </p>
+      <div id="bulk-preview"></div>
+      <small id="bulk-found-count"></small>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="App.closeModal('bulk-modal')">Cancelar</button>
+      <div class="bulk-actions">
+        <button class="btn btn-turq" onclick="App.confirmBulk('owned')">✅ Marcar como Tenho</button>
+        <button class="btn btn-yellow" onclick="App.confirmBulk('duplicate')">🔄 Marcar Repetidas</button>
+        <button class="btn btn-ghost" onclick="App.confirmBulk('missing')">❌ Marcar Faltando</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Configurações -->
+<div id="settings-modal" class="modal-overlay">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <span class="modal-title">⚙️ Configurações</span>
+      <button class="modal-close" onclick="App.closeModal('settings-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="settings-section">
+        <h3>☁️ Google Sheets</h3>
+        <p style="font-size:0.8rem; color:var(--text-3); margin-bottom:10px">
+          Configure sua planilha para sincronizar dados na nuvem. Sem configuração, os dados ficam no navegador.
+        </p>
+        <input class="settings-input" id="cfg-sheet-id" type="text"
+          placeholder="ID da planilha (da URL do Google Sheets)"
+          value="">
+        <input class="settings-input" id="cfg-script-url" type="text"
+          placeholder="URL do Google Apps Script publicado"
+          value="">
+        <button class="btn btn-primary" onclick="saveSheetConfig()">💾 Salvar e Conectar</button>
+      </div>
+
+      <div class="settings-section">
+        <h3>📦 Backup e Restauração</h3>
+        <div class="settings-actions">
+          <button class="btn btn-turq" onclick="App.exportJSON(); App.closeModal('settings-modal')">
+            💾 Exportar Backup
+          </button>
+          <label class="btn btn-ghost" style="cursor:pointer">
+            📥 Importar Backup
+            <input type="file" accept=".json" onchange="App.importJSON(this.files[0]); App.closeModal('settings-modal')" style="display:none">
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>⚠️ Zona de Perigo</h3>
+        <div class="settings-actions">
+          <button class="btn btn-danger" onclick="App.resetCollection(); App.closeModal('settings-modal')">
+            🗑️ Resetar toda a coleção
+          </button>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="App.closeModal('settings-modal')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
+
+<!-- DROPDOWN STYLE -->
+<style>
+.dropdown-menu {
+  position: absolute;
+  right: 0; top: calc(100% + 6px);
+  background: var(--surface);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  min-width: 200px;
+  z-index: 50;
+  overflow: hidden;
+  animation: fadeIn 0.15s ease;
+}
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  color: var(--text-1);
+  font-size: 0.82rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition);
+}
+.dropdown-item:hover { background: var(--surface-2); }
+.dropdown-divider { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
+</style>
+
+<script>
+function toggleExportMenu() {
+  const m = document.getElementById("export-menu");
+  m.style.display = m.style.display === "none" ? "block" : "none";
+}
+document.addEventListener("click", (e) => {
+  if (!document.getElementById("export-wrapper").contains(e.target)) {
+    document.getElementById("export-menu").style.display = "none";
+  }
+});
+
+function saveSheetConfig() {
+  const id  = document.getElementById("cfg-sheet-id").value.trim();
+  const url = document.getElementById("cfg-script-url").value.trim();
+  if (!id || !url) { App.showToast("Preencha os dois campos!", "error"); return; }
+  CONFIG.SHEET_ID = id;
+  CONFIG.APPS_SCRIPT_URL = url;
+  localStorage.setItem("sheet_config", JSON.stringify({ id, url }));
+  App.showToast("✅ Configuração salva! Recarregando...");
+  setTimeout(() => location.reload(), 1500);
+}
+
+// Carrega config salva
+(function() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("sheet_config") || "{}");
+    if (saved.id)  document.getElementById("cfg-sheet-id").value  = saved.id;
+    if (saved.url) document.getElementById("cfg-script-url").value = saved.url;
+  } catch {}
+})();
+</script>
+
+<!-- SCRIPTS -->
+<script src="js/data.js"></script>
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
