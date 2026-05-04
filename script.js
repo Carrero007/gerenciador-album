@@ -1,7 +1,7 @@
 // =============================================================
 // ⚙️  CONFIGURAÇÃO — edite apenas esta constante
 // =============================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyJAHxWCfBttfIXsFTenj7rMk6AqJKnaBiutVrWsv5NbvE4Jl86sUet9w8tmQqt9TNZbQ/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzXg3WxSbJi241-OYdJR5NJ6FOi91-HNzHWAY7rlTcprh3JuTMMSJsacSWENUayEcUDYQ/exec';
 
 // =============================================================
 // DADOS DO ÁLBUM
@@ -326,6 +326,7 @@ let curSearch  = '';
 let gbSearch   = '';
 let gbFilter   = { status:'all', group:'section' };
 let activeStkId = null;
+let tradeStkId  = null;  // figurinha selecionada para troca
 let curQty      = 2;
 let curTab      = 'section';
 let bulkMode    = 'add';   // always accumulate
@@ -377,7 +378,8 @@ function switchTabMobile(tab) {
   const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
   if (btn) switchTab(btn);
   document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('on'));
-  document.getElementById('bn-'+tab)?.classList.add('on');
+  const bnBtn = document.getElementById('bn-'+tab);
+  if (bnBtn) bnBtn.classList.add('on');
 }
 
 // =============================================================
@@ -603,6 +605,7 @@ function makeCard(s, sec, view, idx, showTag) {
         <div class="sc-actions">
           <button class="sa-btn" onclick="quickSet(event,'${s.id}','owned')">✅</button>
           <button class="sa-btn" onclick="quickDup(event,'${s.id}')">🔄</button>
+          ${dups>0?`<button class="sa-btn sa-trade" onclick="quickTrade(event,'${s.id}')" title="Registrar troca">🤝</button>`:''}
           <button class="sa-btn" onclick="quickSet(event,'${s.id}','miss')">❌</button>
         </div>
       </div>`;
@@ -618,12 +621,13 @@ function makeCard(s, sec, view, idx, showTag) {
         </div>
         <div class="sc-list-body">
           <span class="sc-list-name">${label}</span>
-          ${dups>0?`<span class="sc-list-dup">+${dups}×</span>`:''}
+          ${dups>0?`<span class="sc-list-dup">+${dups}×</span>`:'<span class="sc-list-dup" style="display:none"></span>'}
           <span class="sc-list-status">${ico}</span>
         </div>
         <div class="sc-list-actions">
           <button class="sa-btn" onclick="quickSet(event,'${s.id}','owned')">✅</button>
           <button class="sa-btn" onclick="quickDup(event,'${s.id}')">🔄</button>
+          ${dups>0?`<button class="sa-btn sa-trade" onclick="quickTrade(event,'${s.id}')" title="Registrar troca">🤝</button>`:''}
           <button class="sa-btn" onclick="quickSet(event,'${s.id}','miss')">❌</button>
         </div>
       </div>`;
@@ -643,6 +647,10 @@ async function quickSet(evt, id, status) {
   toast(status==='owned'?'✅ Tenho!':'❌ Faltando');
 }
 function quickDup(evt, id) { evt.stopPropagation(); openQtyModal(id); }
+async function quickTrade(evt, id) {
+  evt.stopPropagation();
+  await registerTrade(id);
+}
 
 // Clique no card alterna: faltando → tenho → repetida → faltando
 async function cycleMark(id) {
@@ -684,6 +692,8 @@ function refreshCard(id) {
   const lsts=card.querySelector('.sc-list-status'); if(lsts) lsts.textContent=ico;
   const badge=card.querySelector('.sc-dup-badge');
   if (badge) { badge.textContent=`+${dups}×`; badge.style.display=dups>0?'':'none'; }
+  const ldups=card.querySelector('.sc-list-dup');
+  if (ldups) { ldups.textContent=`+${dups}×`; ldups.style.display=dups>0?'':'none'; }
 }
 
 // =============================================================
@@ -699,8 +709,14 @@ function openStkModal(id) {
   document.getElementById('stk-hd').style.background=`linear-gradient(135deg,${sec.color},${sec.color}99)`;
   document.getElementById('stk-status').textContent=
     qty===0?'❌ Faltando':
-    qty===1?'✅ Tenho':
-    `🔄 Repetida (${qty}× total, ${qty-1}× para troca)`;
+    qty===1?'✅ Tenho (1 no álbum)':
+    `🔄 Repetida — ${qty}× total · ${qty-1}× para troca`;
+
+  // Mostra/esconde botão de troca
+  const tradeBtn=document.getElementById('stk-trade-btn');
+  if (tradeBtn) {
+    tradeBtn.style.display = qty > 1 ? '' : 'none';
+  }
   document.getElementById('modal-stk').classList.add('open');
 }
 
@@ -713,6 +729,22 @@ async function stkAction(action) {
   await DB.set(activeStkId, action, 1);
   afterChange(activeStkId);
   toast(action==='owned'?'✅ Marcada como Tenho!':'❌ Marcada como Faltando');
+}
+
+// Registra uma troca: desconta 1 repetida (qty-1), mínimo = 1 (permanece no álbum)
+async function registerTrade(id) {
+  const qty = DB.getQty(id);
+  if (qty < 2) { toast('Sem repetidas para trocar!', true); return; }
+  closeModal('modal-stk');
+  pushUndo(id, qty);
+  const next = qty - 1;
+  await DB.setQty(id, next);
+  afterChange(id);
+  const restantes = next - 1;
+  toast(next > 1
+    ? `🤝 Troca registrada! Restam ${restantes} repetida${restantes>1?'s':''}.`
+    : '🤝 Troca registrada! Figurinha permanece no álbum.'
+  );
 }
 
 // =============================================================
@@ -820,12 +852,35 @@ function openTrade() {
 
   // Tenho para troca
   const haveDiv=document.createElement('div'); haveDiv.className='trade-section';
-  haveDiv.innerHTML=`<div class="trade-section-title">📦 Tenho para troca (${haves.length} figurinhas, ${haves.reduce((a,h)=>a+h.extra,0)} cópias)</div>`;
+  haveDiv.innerHTML=`<div class="trade-section-title">📦 Tenho para troca (${haves.length} figurinhas, ${haves.reduce((a,h)=>a+h.extra,0)} cópias extras)</div>
+    <p class="trade-tip">Clique numa figurinha para registrar uma troca (−1 repetida)</p>`;
   if (haves.length) {
     const chips=document.createElement('div'); chips.className='trade-chips';
     haves.forEach(h=>{
       const c=document.createElement('span'); c.className='trade-chip has-qty';
-      c.textContent=`${h.id} (${h.extra}×)`;
+      c.dataset.id=h.id;
+      c.innerHTML=`${h.id} <span class="tc-qty">${h.extra}×</span>`;
+      c.title=`Registrar troca de ${h.id} (−1 repetida)`;
+      c.addEventListener('click', async ()=>{
+        const curQtyVal=DB.getQty(h.id);
+        if (curQtyVal < 2) { toast('Sem repetidas para trocar!', true); return; }
+        pushUndo(h.id, curQtyVal);
+        const next=curQtyVal-1;
+        await DB.setQty(h.id, next);
+        afterChange(h.id);
+        // Atualiza o chip na lista de troca
+        const newExtra=next-1;
+        if (newExtra <= 0) {
+          c.remove();
+          // Reconta
+          const remaining=haveDiv.querySelectorAll('.trade-chip');
+          haveDiv.querySelector('.trade-section-title').textContent=`📦 Tenho para troca (${remaining.length} figurinhas)`;
+        } else {
+          c.querySelector('.tc-qty').textContent=`${newExtra}×`;
+        }
+        const restMsg=next>1?`${newExtra} repetida${newExtra>1?'s':''} restante${newExtra>1?'s':''}`:'figurinha permanece no álbum';
+        toast(`🤝 Troca de ${h.id} registrada! ${restMsg}.`);
+      });
       chips.appendChild(c);
     });
     haveDiv.appendChild(chips);
