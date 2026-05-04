@@ -174,6 +174,11 @@
         <button class="stk-btn dup-btn"   onclick="stkAction('dup')"><span class="sbi">🔄</span>Repetida</button>
         <button class="stk-btn miss-btn"  onclick="stkAction('miss')"><span class="sbi">❌</span>Faltando</button>
       </div>
+      <div style="margin-top:10px">
+        <button class="stk-btn trade-btn" id="stk-trade-btn" onclick="registerTrade(activeStkId)" style="display:none;width:100%">
+          <span class="sbi">🤝</span>Registrar Troca <span style="font-size:.65rem;opacity:.7">(−1 repetida)</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>
