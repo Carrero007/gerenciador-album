@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0d1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Álbum Copa 2026 · Gerenciador</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+
+<div id="loader">
+  <div class="ld-ball"></div>
+  <div class="ld-txt">Carregando álbum...</div>
+</div>
+
+<div id="app" style="display:none">
+
+  <nav id="nav">
+    <div class="nav-logo">⚽<br>2026</div>
+  </nav>
+
+  <div id="content">
+
+    <header id="header">
+      <div class="hd-top">
+        <div style="flex:1;min-width:0">
+          <div class="hd-title" id="hd-title">Copa do Mundo 2026</div>
+          <div class="hd-sub" id="hd-sub">Carregando...</div>
+        </div>
+        <div class="hd-btns">
+          <button class="btn btn-yellow btn-sm" onclick="openBulk()">📋 Em massa</button>
+          <button class="btn btn-ghost btn-ico" onclick="openMenu()">⋮</button>
+        </div>
+      </div>
+      <div class="prog-strip">
+        <div class="prog-bar-wrap"><div class="prog-bar-fill" id="prog-bar" style="width:0%"></div></div>
+        <div class="prog-pct" id="prog-pct">0%</div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-chip sc-owned">✅ <strong id="s-owned">0</strong> no álbum</div>
+        <div class="stat-chip sc-miss">❌ <strong id="s-miss">0</strong> faltando</div>
+        <div class="stat-chip sc-dup">🔄 <strong id="s-dup">0</strong> repetidas</div>
+        <div class="stat-chip sc-total">📦 <strong id="s-total">0</strong> total</div>
+      </div>
+    </header>
+
+    <div id="tabs">
+      <button class="tab-btn on" data-tab="section" onclick="switchTab(this)">⚽ Seção</button>
+      <button class="tab-btn" data-tab="global" onclick="switchTab(this)">🔎 Busca Global</button>
+    </div>
+
+    <div id="panel-section">
+      <div id="toolbar">
+        <div class="filter-pill">
+          <button class="fp-btn on" data-f="all"   onclick="setFilter(this)">Todas</button>
+          <button class="fp-btn"    data-f="owned"  onclick="setFilter(this)">✅ Tenho</button>
+          <button class="fp-btn"    data-f="miss"   onclick="setFilter(this)">❌ Faltando</button>
+          <button class="fp-btn"    data-f="dup"    onclick="setFilter(this)">🔄 Repetidas</button>
+        </div>
+        <div class="search-wrap">
+          <span class="search-ico">🔍</span>
+          <input class="search-in" id="search" type="search" placeholder="Buscar..." autocomplete="off" oninput="onSearch(this.value)">
+        </div>
+        <div class="view-grp">
+          <button class="vg-btn on" data-v="grid" onclick="setView(this,'sec')">⊞</button>
+          <button class="vg-btn"    data-v="list" onclick="setView(this,'sec')">≡</button>
+        </div>
+        <span class="tb-sep"></span>
+        <span class="tb-count" id="tb-count"></span>
+      </div>
+      <div id="scroller">
+        <div id="grid" class="stk-grid"></div>
+      </div>
+    </div>
+
+    <div id="panel-global">
+      <div class="gb-bar">
+        <div class="gb-search-wrap">
+          <span class="gb-ico-left">🔍</span>
+          <input class="gb-search-in" id="gb-search" type="search"
+            placeholder="Buscar por código, país, seção…"
+            autocomplete="off" oninput="onGlobalSearch(this.value)">
+          <span class="gb-clear" id="gb-clear" onclick="clearGlobal()">✕</span>
+        </div>
+        <div class="gb-filters">
+          <div class="gf-pill">
+            <button class="gf-btn on" data-gf="status" data-v="all"   onclick="setGF(this)">Todas</button>
+            <button class="gf-btn"    data-gf="status" data-v="owned"  onclick="setGF(this)">✅ Tenho</button>
+            <button class="gf-btn"    data-gf="status" data-v="miss"   onclick="setGF(this)">❌ Faltando</button>
+            <button class="gf-btn"    data-gf="status" data-v="dup"    onclick="setGF(this)">🔄 Repetidas</button>
+          </div>
+          <select class="gb-sel" id="gb-grupo" onchange="renderGlobal()">
+            <option value="">Todos os grupos</option>
+            <option value="A">Grupo A</option><option value="B">Grupo B</option>
+            <option value="C">Grupo C</option><option value="D">Grupo D</option>
+            <option value="E">Grupo E</option><option value="F">Grupo F</option>
+            <option value="G">Grupo G</option><option value="H">Grupo H</option>
+            <option value="I">Grupo I</option><option value="J">Grupo J</option>
+            <option value="K">Grupo K</option><option value="L">Grupo L</option>
+            <option value="_esp">Especiais</option>
+          </select>
+          <div class="gf-pill">
+            <button class="gf-btn on" data-gf="group" data-v="section" onclick="setGF(this)">Por seção</button>
+            <button class="gf-btn"    data-gf="group" data-v="flat"    onclick="setGF(this)">Lista única</button>
+          </div>
+          <div class="view-grp">
+            <button class="vg-btn on" data-v="grid" onclick="setView(this,'gb')">⊞</button>
+            <button class="vg-btn"    data-v="list" onclick="setView(this,'gb')">≡</button>
+          </div>
+        </div>
+      </div>
+      <div id="gb-scroller">
+        <div class="gb-result-info">
+          <span>Exibindo <strong id="gb-count">0</strong> figurinhas</span>
+          <span id="gb-pct" style="color:var(--t3)"></span>
+        </div>
+        <div id="gb-grid"></div>
+      </div>
+    </div>
+
+    <div id="sbar">
+      <span id="sync-status-icon" class="sync-dot idle" title="Status de sincronização"></span>
+      <span style="font-size:.7rem;color:var(--t3);font-family:'Barlow Condensed',sans-serif">Banco:</span>
+      <span id="src-badge" class="sbar-src cfg-status local">💾 Local</span>
+      <span id="undo-btn" class="undo-btn" onclick="undoLast()" style="display:none">↩ Desfazer</span>
+    </div>
+
+  </div>
+</div>
+
+<div id="bnav">
+  <div class="bnav-row">
+    <button class="bnav-btn on"  id="bn-section" onclick="switchTabMobile('section')"><span class="bni">⚽</span>Seção</button>
+    <button class="bnav-btn"     id="bn-global"  onclick="switchTabMobile('global')"><span class="bni">🔎</span>Busca</button>
+    <button class="bnav-btn"     id="bn-drawer"  onclick="openDrawer()"><span class="bni">📋</span>Seções</button>
+    <button class="bnav-btn"     id="bn-bulk"    onclick="openBulk()"><span class="bni">✏️</span>Marcar</button>
+    <button class="bnav-btn"     id="bn-menu"    onclick="openMenu()"><span class="bni">⚙️</span>Menu</button>
+  </div>
+</div>
+
+<div id="drawer">
+  <div class="drawer-bg" onclick="closeDrawer()"></div>
+  <div class="drawer-panel">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title">Seções do Álbum</div>
+    <div class="drawer-list" id="drawer-list"></div>
+  </div>
+</div>
+
+<!-- MODAL: Figurinha -->
+<div class="modal" id="modal-stk">
+  <div class="modal-bg" onclick="closeModal('modal-stk')"></div>
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-hd">
+      <span class="modal-title">Figurinha</span>
+      <button class="modal-close" onclick="closeModal('modal-stk')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="stk-detail-hd" id="stk-hd">
+        <div class="stk-detail-num" id="stk-num">—</div>
+        <div class="stk-detail-sec" id="stk-sec">—</div>
+      </div>
+      <div class="stk-detail-status" id="stk-status">—</div>
+      <div class="stk-btns">
+        <button class="stk-btn owned-btn" onclick="stkAction('owned')"><span class="sbi">✅</span>Tenho</button>
+        <button class="stk-btn dup-btn"   onclick="stkAction('dup')"><span class="sbi">🔄</span>Repetida</button>
+        <button class="stk-btn miss-btn"  onclick="stkAction('miss')"><span class="sbi">❌</span>Faltando</button>
+      </div>
+      <div style="margin-top:10px">
+        <button class="stk-btn trade-btn" id="stk-trade-btn" onclick="registerTrade(activeStkId)" style="display:none;width:100%">
+          <span class="sbi">🤝</span>Registrar Troca <span style="font-size:.65rem;opacity:.7">(−1 repetida)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Qty -->
+<div class="modal" id="modal-qty">
+  <div class="modal-bg" onclick="closeModal('modal-qty')"></div>
+  <div class="modal-box" style="max-width:360px">
+    <div class="modal-handle"></div>
+    <div class="modal-hd">
+      <span class="modal-title">📦 Quantidade</span>
+      <button class="modal-close" onclick="closeModal('modal-qty')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="dup-info">Figurinha: <strong id="qty-stk-id">—</strong></div>
+      <div class="dup-info">Quantas você tem no <strong>total</strong>?</div>
+      <div class="qty-ctrl">
+        <button class="qty-minus" onclick="changeQty(-1)">−</button>
+        <div class="qty-val" id="qty-val">2</div>
+        <button class="qty-plus" onclick="changeQty(+1)">+</button>
+      </div>
+      <div class="qty-hint">Ex: 3 no total → coloque 3 → mostra 1 no álbum + 2 repetidas.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-qty')">Cancelar</button>
+      <button class="btn btn-yellow" onclick="confirmQty()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Bulk — modo "Acumular" apenas -->
+<div class="modal" id="modal-bulk">
+  <div class="modal-bg" onclick="closeModal('modal-bulk')"></div>
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-hd">
+      <span class="modal-title">📋 Entrada em Massa</span>
+      <button class="modal-close" onclick="closeModal('modal-bulk')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="bulk-info-row">
+        <span class="bulk-info-badge">🔄 Acumular</span>
+        <span class="bulk-mode-hint">Repetições contam: BRA-1, BRA-1 → qty = 2</span>
+      </div>
+      <textarea class="bulk-ta" id="bulk-ta"
+        placeholder="Cole os códigos separados por vírgula ou linha:&#10;BRA-1&#10;BRA-1, BRA-1, ARG-5&#10;CC1, CC2"></textarea>
+      <div class="bulk-hint">Aceita vírgula, espaço ou quebra de linha. IDs normalizados automaticamente.</div>
+      <div class="bulk-preview" id="bulk-preview"></div>
+      <div class="bulk-found" id="bulk-found"></div>
+    </div>
+    <div class="modal-foot">
+      <div class="bulk-foot-btns">
+        <button class="btn btn-turq btn-sm" onclick="bulkConfirm('owned')">✅ Tenho</button>
+        <button class="btn btn-ghost btn-sm" onclick="bulkConfirm('dup')">🔄 +Repetidas</button>
+        <button class="btn btn-ghost btn-sm" onclick="bulkConfirm('miss')">❌ Faltando</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Troca -->
+<div class="modal" id="modal-trade">
+  <div class="modal-bg" onclick="closeModal('modal-trade')"></div>
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-hd">
+      <span class="modal-title">🔄 Lista de Troca</span>
+      <button class="modal-close" onclick="closeModal('modal-trade')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="trade-content"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost btn-sm" onclick="copyTrade()">📋 Copiar</button>
+      <button class="btn btn-turq btn-sm" onclick="exportPDF('trade')">📄 PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Insights -->
+<div class="modal" id="modal-insights">
+  <div class="modal-bg" onclick="closeModal('modal-insights')"></div>
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-hd">
+      <span class="modal-title">📊 Insights por Grupo</span>
+      <button class="modal-close" onclick="closeModal('modal-insights')">✕</button>
+    </div>
+    <div class="modal-body" id="insights-body"></div>
+  </div>
+</div>
+
+<!-- MODAL: Menu -->
+<div class="modal" id="modal-menu">
+  <div class="modal-bg" onclick="closeModal('modal-menu')"></div>
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-hd">
+      <span class="modal-title">⚙️ Menu</span>
+      <button class="modal-close" onclick="closeModal('modal-menu')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="cfg-section">
+        <span class="cfg-label">🔄 Lista de Troca</span>
+        <p class="cfg-desc">Gere automaticamente sua lista de figurinhas para troca.</p>
+        <button class="btn btn-turq btn-sm" onclick="openTrade()">🔄 Ver Lista de Troca</button>
+      </div>
+
+      <div class="cfg-section">
+        <span class="cfg-label">📊 Insights por Grupo</span>
+        <p class="cfg-desc">Veja progresso por grupo e sugestões de figurinhas alvo.</p>
+        <button class="btn btn-turq btn-sm" onclick="openInsights()">📊 Ver Insights</button>
+      </div>
+
+      <div class="cfg-section">
+        <span class="cfg-label">☁️ Sincronização Google Sheets</span>
+        <div class="cfg-row" style="margin-bottom:10px">
+          Status: <span id="sync-txt" style="color:var(--turq)">—</span>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="manualSync()">🔄 Sincronizar agora</button>
+      </div>
+
+      <div class="cfg-section">
+        <span class="cfg-label">📄 Exportar PDF</span>
+        <p class="cfg-desc">Gere um relatório em PDF com suas figurinhas.</p>
+        <div class="cfg-actions">
+          <button class="btn btn-turq btn-sm" onclick="exportPDF('miss')">❌ PDF Faltando</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportPDF('dup')">🔄 PDF Repetidas</button>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <span class="cfg-label">⚠️ Zona de Perigo</span>
+        <button class="btn btn-red btn-sm" onclick="resetAll()">🗑️ Resetar coleção</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
