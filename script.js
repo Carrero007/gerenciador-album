@@ -1,7 +1,7 @@
 // =============================================================
 // ⚙️  CONFIGURAÇÃO — edite apenas esta constante
 // =============================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzXg3WxSbJi241-OYdJR5NJ6FOi91-HNzHWAY7rlTcprh3JuTMMSJsacSWENUayEcUDYQ/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwoPCRJSN8BsJauszV65VWx2E4Pzz6r4dzqLlRSm9lptferNMLCXmk5j6cO1KidQwQdxA/exec';
 
 // =============================================================
 // DADOS DO ÁLBUM
