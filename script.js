@@ -59,7 +59,7 @@ const ALBUM = [
   { id:'cod', code:'COD', name:'Grupo K · Congo',       icon:'🇨🇩', color:'#007FFF', grupo:'K', stickers:R('COD',1,20) },
   { id:'uzb', code:'UZB', name:'Grupo K · Uzbequistão', icon:'🇺🇿', color:'#1EB53A', grupo:'K', stickers:R('UZB',1,20) },
   { id:'col', code:'COL', name:'Grupo K · Colômbia',    icon:'🇨🇴', color:'#C8A800', grupo:'K', stickers:R('COL',1,20) },
-  { id:'eng', code:'ENG', name:'Grupo L · Inglaterra', icon:'🏴󠁧󠁢󠁥󠁮󠁧', color:'#CF081F', grupo:'L', stickers:R('ENG',1,20) },
+  { id:'eng', code:'ENG', name:'Grupo L · Inglaterra', icon:'🏴󠁧󠁢󠁥󠁮󠁧󠁿', color:'#CF081F', grupo:'L', stickers:R('ENG',1,20) },
   { id:'cro', code:'CRO', name:'Grupo L · Croácia',    icon:'🇭🇷', color:'#CC0000', grupo:'L', stickers:R('CRO',1,20) },
   { id:'gha', code:'GHA', name:'Grupo L · Gana',       icon:'🇬🇭', color:'#006B3F', grupo:'L', stickers:R('GHA',1,20) },
   { id:'pan', code:'PAN', name:'Grupo L · Panamá',     icon:'🇵🇦', color:'#005293', grupo:'L', stickers:R('PAN',1,20) },
