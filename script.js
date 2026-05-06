@@ -1,7 +1,41 @@
 // =============================================================
 // ⚙️  CONFIGURAÇÃO — edite apenas esta constante
 // =============================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwoPCRJSN8BsJauszV65VWx2E4Pzz6r4dzqLlRSm9lptferNMLCXmk5j6cO1KidQwQdxA/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzxsuN--bn4JnOwdq9sjmIbvEzhjHU9eBhb_EWzSIzY-1RuJzmxXgQIynk1E7hwUg5Z8Q/exec';
+
+// =============================================================
+// 🔐 AUTENTICAÇÃO — sessão de usuário
+// =============================================================
+const AUTH = {
+  KEY: 'copa26_usuario',
+
+  obter() {
+    try { return JSON.parse(localStorage.getItem(this.KEY) || 'null'); }
+    catch { return null; }
+  },
+
+  limpar() {
+    localStorage.removeItem(this.KEY);
+    localStorage.removeItem('copa26');
+  },
+
+  cpf() {
+    const u = this.obter();
+    return u ? u.cpf : '';
+  },
+
+  apelido() {
+    const u = this.obter();
+    return u ? (u.apelido || u.nome || 'Usuário') : '';
+  }
+};
+
+// Logout: limpa sessão e volta pro login
+function logout() {
+  if (!confirm('Deseja sair da sua conta?')) return;
+  AUTH.limpar();
+  window.location.href = 'index.html';
+}
 
 // =============================================================
 // DADOS DO ÁLBUM
@@ -90,7 +124,9 @@ const DB = {
 
   load() {
     try {
-      const raw = JSON.parse(localStorage.getItem('copa26') || '{}');
+      // Chave por CPF: evita mistura de dados entre usuários no mesmo dispositivo
+      const key = 'copa26_' + (AUTH.cpf() || 'local');
+      const raw = JSON.parse(localStorage.getItem(key) || '{}');
       // Migração de schema antigo (status+qty) → qty-only
       this._d = {};
       for (const [id, val] of Object.entries(raw)) {
@@ -104,7 +140,10 @@ const DB = {
     } catch { this._d = {}; }
   },
 
-  _save() { localStorage.setItem('copa26', JSON.stringify(this._d)); },
+  _save() {
+    const key = 'copa26_' + (AUTH.cpf() || 'local');
+    localStorage.setItem(key, JSON.stringify(this._d));
+  },
 
   // Retorna qty (0 = faltando)
   getQty(id) { return this._d[id.toUpperCase()] || 0; },
@@ -279,9 +318,16 @@ const SyncQueue = {
   }
 };
 
-// Fetch com timeout
+// Fetch com timeout — injeta CPF automaticamente em todas requisições
 async function _apiFetch(params) {
   if (!SCRIPT_URL || SCRIPT_URL.includes('COLE_AQUI')) return null;
+  // Injeta CPF do usuário logado em todas as chamadas (exceto login/cadastrar)
+  const authed = ['listar','salvar','bulkSalvar','reset','importar'];
+  if (authed.includes(params.acao)) {
+    const cpf = AUTH.cpf();
+    if (!cpf) { console.warn('[Copa26] CPF não disponível'); return null; }
+    params = { cpf, ...params };
+  }
   try {
     const qs = Object.entries(params).map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join('&');
     const ctrl = new AbortController();
@@ -316,6 +362,105 @@ async function undoLast() {
 }
 
 // =============================================================
+// HISTÓRICO
+// =============================================================
+const HISTORY = {
+  _key() { return 'copa26_hist_' + (AUTH.cpf() || 'local'); },
+
+  _load() {
+    try { return JSON.parse(localStorage.getItem(this._key()) || '{"trocas":[],"bulk":[]}'); }
+    catch { return { trocas:[], bulk:[] }; }
+  },
+
+  _save(d) { localStorage.setItem(this._key(), JSON.stringify(d)); },
+
+  pushTroca(stkId, prevQty) {
+    const d = this._load();
+    d.trocas.unshift({ id:stkId, prevQty, novaQty:prevQty-1, ts:Date.now() });
+    if (d.trocas.length > 100) d.trocas = d.trocas.slice(0, 100);
+    this._save(d);
+  },
+
+  pushBulk(validCodes, status) {
+    const d = this._load();
+    const freq = {};
+    validCodes.forEach(c => freq[c] = (freq[c]||0)+1);
+    const uniq = Object.keys(freq);
+    d.bulk.unshift({ codes:uniq, freq, status, total:validCodes.length, ts:Date.now() });
+    if (d.bulk.length > 50) d.bulk = d.bulk.slice(0, 50);
+    this._save(d);
+  },
+
+  getTrocas() { return this._load().trocas; },
+  getBulk()   { return this._load().bulk; },
+
+  clear() { localStorage.removeItem(this._key()); }
+};
+
+function _tsLabel(ts) {
+  const d = new Date(ts);
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+}
+
+function openHistory(tab='trocas') {
+  closeModal('modal-menu');
+  _renderHistory(tab);
+  document.getElementById('modal-history').classList.add('open');
+}
+
+function _renderHistory(tab) {
+  // tabs
+  ['trocas','bulk'].forEach(t => {
+    document.getElementById('htab-'+t).classList.toggle('on', t===tab);
+  });
+  const body = document.getElementById('history-body');
+  body.innerHTML = '';
+
+  if (tab === 'trocas') {
+    const list = HISTORY.getTrocas();
+    if (!list.length) {
+      body.innerHTML = '<div class="hist-empty">Nenhuma troca registrada ainda.</div>';
+      return;
+    }
+    list.forEach(item => {
+      const entry = IDX[item.id];
+      const secName = entry ? entry.sec.name : '—';
+      const div = document.createElement('div'); div.className='hist-item';
+      div.innerHTML = `
+        <div class="hi-top">
+          <span class="hi-id">${item.id}</span>
+          <span class="hi-badge trade">🤝 Troca</span>
+          <span class="hi-ts">${_tsLabel(item.ts)}</span>
+        </div>
+        <div class="hi-sub">${secName} · ${item.prevQty}× → ${item.novaQty}×${item.novaQty===1?' (permanece no álbum)':''}</div>`;
+      body.appendChild(div);
+    });
+  } else {
+    const list = HISTORY.getBulk();
+    if (!list.length) {
+      body.innerHTML = '<div class="hist-empty">Nenhuma entrada em massa ainda.</div>';
+      return;
+    }
+    const statusLabel = { owned:'✅ Tenho', dup:'🔄 +Repetidas', miss:'❌ Faltando' };
+    list.forEach(item => {
+      const div = document.createElement('div'); div.className='hist-item';
+      const chips = item.codes.slice(0,12).map(c => {
+        const f = item.freq[c];
+        return `<span class="hi-chip">${c}${f>1?` ×${f}`:''}</span>`;
+      }).join('') + (item.codes.length>12?`<span class="hi-chip more">+${item.codes.length-12}</span>`:'');
+      div.innerHTML = `
+        <div class="hi-top">
+          <span class="hi-badge bulk">${statusLabel[item.status]||item.status}</span>
+          <span class="hi-count">${item.codes.length} únicas · ${item.total} total</span>
+          <span class="hi-ts">${_tsLabel(item.ts)}</span>
+        </div>
+        <div class="hi-chips">${chips}</div>`;
+      body.appendChild(div);
+    });
+  }
+}
+
+// =============================================================
 // ESTADO
 // =============================================================
 let curSection = null;
@@ -336,9 +481,40 @@ let _searchDebounce = null;
 // INIT
 // =============================================================
 async function init() {
+  // ── Verificação de autenticação ──
+  const usuario = AUTH.obter();
+  if (!usuario || !usuario.cpf) {
+    window.location.href = 'index.html';
+    return;
+  }
+
+  // Estilos do histórico
+  const _hstyle = document.createElement('style');
+  _hstyle.textContent = `
+    .hist-item{background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+    .hi-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px}
+    .hi-id{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.9rem;color:var(--t1)}
+    .hi-badge{font-family:'Barlow Condensed',sans-serif;font-size:.7rem;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.5px}
+    .hi-badge.trade{background:rgba(14,165,160,.15);color:var(--turq)}
+    .hi-badge.bulk{background:rgba(240,180,41,.12);color:var(--yellow)}
+    .hi-ts{font-size:.65rem;color:var(--t3);margin-left:auto}
+    .hi-count{font-size:.72rem;color:var(--t2)}
+    .hi-sub{font-size:.72rem;color:var(--t3)}
+    .hi-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+    .hi-chip{font-family:'Barlow Condensed',sans-serif;font-size:.72rem;font-weight:700;padding:2px 6px;border-radius:3px;background:var(--surf2);color:var(--t2);border:1px solid var(--border)}
+    .hi-chip.more{color:var(--t3)}
+    .hist-empty{text-align:center;color:var(--t3);font-size:.82rem;padding:32px 0}
+  `;
+  document.head.appendChild(_hstyle);
+
   DB.load();
   buildNav();
   buildDrawer();
+
+  // Mostra o apelido no subtítulo do header — permanece visível em todas as seções
+  const apelido = usuario.apelido || usuario.nome;
+  const subEl = document.getElementById('hd-sub');
+  if (subEl) subEl.textContent = `📖 Álbum do(a) ${apelido}`;
 
   const hasScript = SCRIPT_URL && !SCRIPT_URL.includes('COLE_AQUI');
 
@@ -460,7 +636,7 @@ function showSection(secId) {
   curSection=ALBUM.find(s=>s.id===secId);
   if (!curSection) return;
   document.getElementById('hd-title').textContent=`${curSection.icon} ${curSection.name}`;
-  document.getElementById('hd-sub').textContent=`${curSection.stickers.length} figurinhas`;
+  // hd-sub mantém o apelido do usuário — não sobrescreve aqui
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active', el.dataset.id===secId));
   curSearch=''; document.getElementById('search').value='';
   renderSection(); updateStats(); updateNavDots(); buildDrawer();
@@ -826,6 +1002,7 @@ async function bulkConfirm(status) {
   const allCodes=parseCodesRaw(raw);
   const validCodes=allCodes.filter(c=>IDX[c]);
   if (!validCodes.length) { toast('Nenhum código válido!',true); return; }
+  HISTORY.pushBulk(validCodes, status);
   await DB.bulkSet(validCodes, status, 2, true); // sempre acumula
   updateStats(); updateNavDots(); buildDrawer();
   if (curTab==='section') renderSection(); else renderGlobal();
@@ -865,6 +1042,7 @@ function openTrade() {
         const curQtyVal=DB.getQty(h.id);
         if (curQtyVal < 2) { toast('Sem repetidas para trocar!', true); return; }
         pushUndo(h.id, curQtyVal);
+        HISTORY.pushTroca(h.id, curQtyVal);
         const next=curQtyVal-1;
         await DB.setQty(h.id, next);
         afterChange(h.id);
